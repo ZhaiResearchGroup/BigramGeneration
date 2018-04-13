@@ -6,5 +6,5 @@ if __name__ == "__main__":
 	graph = BigramGraph(str1)
 	path = nx.shortest_path(graph.directed_graph, source='man', target='exhausted', weight='weight')
 	print(path)
-	# print(graph.directed_graph.edges())
-	# print(graph.directed_graph.nodes())
+	graph.print_nodes()
+	graph.print_edges()
