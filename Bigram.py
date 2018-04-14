@@ -5,12 +5,13 @@ from sys import maxsize
 class BigramGraph:
 
     def __init__(self, document):
+        self.document = document
+        self.directed_graph = self.build_graph(document)
+
+    def build_graph(self, document): 
         self.word_list1 = document.split(None)
         self.word_list2 = [word.lower().rstrip(',.!?;') for word in self.word_list1]
-        self.directed_graph = self.build_graph()
-        self.normalize_node_counts()
 
-    def build_graph(self): 
         dG = nx.DiGraph()
 
         for i, word in enumerate(self.word_list2):
@@ -37,6 +38,8 @@ class BigramGraph:
             except:
                 raise
 
+        self.normalize_node_counts(dG)
+
         return dG
 
     def print_graph(self):
@@ -57,31 +60,31 @@ class BigramGraph:
     def get_edges(self):
         return self.directed_graph.edges()
 
-    def normalize_node_counts(self):
-        nodes = self.directed_graph.nodes(data=True)
+    def normalize_node_counts(self, graph):
+        nodes = graph.nodes(data=True)
         for node in nodes:
             total_apps = 0
-            edge_map = self.directed_graph[node[0]]
+            edge_map = graph[node[0]]
             for edge in edge_map:
                 total_apps += edge_map[edge]['times_taken']
             for edge in edge_map:
                 edge_map[edge]['probability'] = edge_map[edge]['times_taken'] / total_apps
 
 
-    def get_all_nodes_at_distance(self, dir_graph, word, num_steps):
+    def get_all_nodes_at_distance(self, dir_graph, word, start_prob, num_steps):
         nodes_at_distance = set()
-        queued_words = [(word, 0)]
+        queued_words = [(word, 0, start_prob)]
         while len(queued_words) > 0:
-            curr_word, distance = queued_words.pop(0)
-
+            curr_word, distance, prob = queued_words.pop(0)
             if distance == num_steps:
-                nodes_at_distance.add(curr_word)
+                nodes_at_distance.add((curr_word, prob))
 
             if distance < num_steps:
                 neighbors = nx.neighbors(dir_graph, curr_word)
                 for neighbor in neighbors:
                     if neighbor not in nodes_at_distance:
-                        queued_words.append((neighbor, distance + 1))
+                        next_prob = dir_graph[curr_word][neighbor]['probability'] * prob
+                        queued_words.append((neighbor, distance + 1, next_prob))
 
         return nodes_at_distance
 
@@ -93,12 +96,15 @@ class BigramGraph:
         """
         related_words = set()
 
-        nodes_forward = self.get_all_nodes_at_distance(self.directed_graph, word, num_steps)
+        START_PROB = 1
+        nodes_forward = self.get_all_nodes_at_distance(self.directed_graph, word, START_PROB, num_steps)
 
         related_words = set()
-        reversed_graph = self.directed_graph.reverse(copy=True)
+        reversed_document = " ".join(self.document.split(" ")[::-1])
+        reversed_graph = self.build_graph(reversed_document)
+
         for node in nodes_forward:
-            nodes_backward = self.get_all_nodes_at_distance(reversed_graph, node, num_steps)
+            nodes_backward = self.get_all_nodes_at_distance(reversed_graph, node[0], node[1], num_steps)
             related_words.update(nodes_backward)
 
         return related_words
