@@ -94,6 +94,7 @@ class BigramGraph:
         Returns a list of words within 'num steps' forward
         then backward on the graph.
         """
+        word = word.lower()
         related_words = set()
 
         START_PROB = 1
